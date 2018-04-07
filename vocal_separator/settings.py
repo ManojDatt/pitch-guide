@@ -27,7 +27,7 @@ SECRET_KEY = '@()ylh^&@lq%t+jcbpgo)5ecra361ly@r0_+p16-8el68^n*2a'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["52.76.148.171"]
 
 
 # Application definition
@@ -40,7 +40,8 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'music_app'
+    'music_app',
+    'cloudinary'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -131,8 +132,15 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATIC_ROOT = 'staticfiles'
+STATIC_ROOT = '/home/ubuntu/www/pitch-guide/staticfiles'
 
 STATICFILES_DIRS = (
     os.path.join(STATIC_ROOT, 'static/'),
 )
+
+
+CLOUDINARY = {
+  'cloud_name': 'du3uybfbo',  
+  'api_key': '242533428757293',  
+  'api_secret': 'L6l2OAs2N4JVNpa25T1J5u7qhtA',  
+}

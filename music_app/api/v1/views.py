@@ -14,6 +14,7 @@ from aubio import source, pitch
 from pydub import AudioSegment
 from vocal_separator import settings
 import scipy;
+import cloudinary
 
 class VocalSaparateAPIView(APIView):
 	permission_classes = [IsAuthenticated]
@@ -46,7 +47,7 @@ class PitchGuideAPIView(APIView):
 
 			downsample = 1
 			samplerate = 44100 // downsample
-			if len( sys.argv ) > 2: samplerate = int(sys.argv[2])
+			#if len( sys.argv ) > 2: samplerate = int(sys.argv[2])
 
 			win_s = 4096 // downsample # fft size
 			hop_s = 512  // downsample # hop size
@@ -86,15 +87,16 @@ class PitchGuideAPIView(APIView):
 
 			    before_file.write("%f %f\n" % (last_time_pitch, pitch1))
 			    if read < hop_s: break
+                        cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.txt'),resource_type="raw")
+
 			os.remove(filename)
 			os.remove(filename1)
 			file.close()
 			before_file.close()
-			return Response({"message":"Pitch guide success.", "code":200,"revised_pitch": "{}/static/picth_file/pitch-guide.txt".format(request.build_absolute_uri('/')[:-1]),
-				"pitch-before": "{}/static/picth_file/pitch-guide_before.txt".format(request.build_absolute_uri('/')[:-1])})
+			return Response({"message":"Pitch guide success.", "code":200,"revised_pitch": cloud_pitch['url'] })
 		except Exception as e:
-			
-			return Response({"message":"Something went wrong","error": e, "code":500})
+			print(e)
+			return Response({"message":"Something went wrong", "code":500})
 
 
 def perform_vocal_separate(*args, **kwargs):
