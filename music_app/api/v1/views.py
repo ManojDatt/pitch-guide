@@ -36,10 +36,10 @@ class VocalSaparateAPIView(APIView):
 class PitchGuideAPIView(APIView):
 	permission_classes = [AllowAny]
 	def post(self, request, format=None):
+		filename1=  "music1.mp3"
 		try:
 			music_file = request.data.get('song_url', None)
 			difference = request.data.get('difference', 2)
-			filename1=  "music1.mp3"
 			wget.download(music_file, filename1)
 			sound = AudioSegment.from_mp3(os.path.join(settings.BASE_DIR, filename1))
 			sound.export("music.wav", format="wav")
@@ -80,8 +80,6 @@ class PitchGuideAPIView(APIView):
 			    	if len(initial_training) > 0:
 				    	avg = scipy.mean(initial_training)
 				    	confidences.append({str(last_time_pitch): str(avg)})
-					#file.write("%f %f\n" % (last_time_pitch, avg))
-					#json.dump({"{}".format(str(last_time_pitch)): str(avg)}, file)
 				    	initial_training = []
 			    total_frames += read
 			    last_pitch = pitch1
@@ -100,6 +98,7 @@ class PitchGuideAPIView(APIView):
 			return Response({"message":"Pitch guide success.", "code":200,"revised_pitch": cloud_pitch['url'] })
 		except Exception as e:
 			print(e)
+			os.remove(filename1)
 			return Response({"message":"Something went wrong", "code":500})
 
 
