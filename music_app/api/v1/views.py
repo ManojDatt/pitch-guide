@@ -15,7 +15,7 @@ from pydub import AudioSegment
 from vocal_separator import settings
 import scipy;
 import cloudinary
-
+import json
 class VocalSaparateAPIView(APIView):
 	permission_classes = [IsAuthenticated]
 	def post(self, request, format=None):
@@ -65,7 +65,7 @@ class PitchGuideAPIView(APIView):
 			total_frames = 0
 			last_pitch = None
 			last_time_pitch = None
-			file  = open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.txt'), "w")
+			#file  = open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.txt'), "w")
 			before_file  = open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide_before.txt'), "w")
 			while True:
 			    samples, read = s()
@@ -79,7 +79,9 @@ class PitchGuideAPIView(APIView):
 			    else:
 			    	if len(initial_training) > 0:
 				    	avg = scipy.mean(initial_training)
-				    	file.write("%f %f\n" % (last_time_pitch, avg))
+				    	confidences.append({str(last_time_pitch): str(avg)})
+					#file.write("%f %f\n" % (last_time_pitch, avg))
+					#json.dump({"{}".format(str(last_time_pitch)): str(avg)}, file)
 				    	initial_training = []
 			    total_frames += read
 			    last_pitch = pitch1
@@ -87,7 +89,9 @@ class PitchGuideAPIView(APIView):
 
 			    before_file.write("%f %f\n" % (last_time_pitch, pitch1))
 			    if read < hop_s: break
-                        cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.txt'),resource_type="raw")
+			with open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.json'), "w") as file:
+				file.write(json.dumps(confidences))
+                        cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.json'),resource_type="raw")
 
 			os.remove(filename)
 			os.remove(filename1)
