@@ -10,7 +10,7 @@ import math
 import sys
 import numpy as np
 from numpy.linalg import norm, svd
-from aubio import source, pitch
+from aubio import source, pitch, onset
 from pydub import AudioSegment
 from vocal_separator import settings
 import scipy;
@@ -36,23 +36,23 @@ class VocalSaparateAPIView(APIView):
 class PitchGuideAPIView(APIView):
 	permission_classes = [AllowAny]
 	def post(self, request, format=None):
-		filename1=  "music1.mp3"
+		filename=  "music1.mp3"
 		try:
 			music_file = request.data.get('song_url', None)
 			difference = request.data.get('difference', 2)
-			wget.download(music_file, filename1)
-			sound = AudioSegment.from_mp3(os.path.join(settings.BASE_DIR, filename1))
-			sound.export("music.wav", format="wav")
-			filename = "music.wav"
-
+			wget.download(music_file, filename)
 			downsample = 1
 			samplerate = 44100 // downsample
-			#if len( sys.argv ) > 2: samplerate = int(sys.argv[2])
 
-			win_s = 4096 // downsample # fft size
-			hop_s = 512  // downsample # hop size
+			win_s = 4096 // downsample 
+			hop_s = 512  // downsample
+			duration_samplerate = 0
+			duration_win_s = 512
+			duration_hop_s = duration_win_s // 2 
 
 			s = source(filename, samplerate, hop_s)
+			o = onset("default", win_s, hop_s, duration_samplerate)
+
 			samplerate = s.samplerate
 
 			tolerance = 0.8
@@ -61,44 +61,28 @@ class PitchGuideAPIView(APIView):
 			pitch_o.set_unit("midi")
 			pitch_o.set_tolerance(tolerance)
 			initial_training =[]
-			confidences = []
 			total_frames = 0
-			last_pitch = None
-			last_time_pitch = None
-			#file  = open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.txt'), "w")
-			before_file  = open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide_before.txt'), "w")
+			
 			while True:
 			    samples, read = s()
 			    pitch1 = pitch_o(samples)[0]
-			    if last_pitch == None:
-			    	last_pitch = pitch1
-			    	last_time_pitch = total_frames / float(samplerate)
-
-			    if (round(pitch1) - round(last_pitch)) < difference :
-			    	initial_training.append(pitch1)
-			    else:
-			    	if len(initial_training) > 0:
-				    	avg = scipy.mean(initial_training)
-				    	confidences.append({str(last_time_pitch): str(avg)})
-				    	initial_training = []
+			    confidence = 0#np.nan_to_num(pitch_o.get_confidence())
+			    if o(samples):
+			    	confidence = np.nan_to_num(o.get_last_s())
+			    if confidence > 0:
+			    	initial_training.append({"start_time": str(total_frames / float(samplerate)) ,"durations": str(confidence),"value": str(pitch1)})
 			    total_frames += read
-			    last_pitch = pitch1
-			    last_time_pitch = total_frames / float(samplerate)
-
-			    before_file.write("%f %f\n" % (last_time_pitch, pitch1))
 			    if read < hop_s: break
+
 			with open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.json'), "w") as file:
-				file.write(json.dumps(confidences))
+				file.write(json.dumps(initial_training))
                         cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.json'),resource_type="raw")
 
 			os.remove(filename)
-			os.remove(filename1)
-			file.close()
-			before_file.close()
 			return Response({"message":"Pitch guide success.", "code":200,"revised_pitch": cloud_pitch['url'] })
 		except Exception as e:
 			print(e)
-			os.remove(filename1)
+			os.remove(filename)
 			return Response({"message":"Something went wrong", "code":500})
 
 
