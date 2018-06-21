@@ -16,97 +16,160 @@ from vocal_separator import settings
 import scipy;
 import cloudinary
 import json
-class VocalSaparateAPIView(APIView):
-	permission_classes = [IsAuthenticated]
-	def post(self, request, format=None):
-		
-		song_file = request.data.get('song_url', None)
-		music_file = request.data.get('music_url', None)
-		if not None in [song_file, music_file]:
-			vocal_url = perform_vocal_separate(song_file, music_file)
-			if not vocal_url == 'NoURL':
-				return Response({"message":"Vocal ready to use.", "vocal_url": vocal_url, "code":200})
-			else:
-				return Response({"message":"Music or Song Url is not correct.",  "code": 500})
-		else:
-			return Response({"message":"Please provide all required parameters.", "code": 402})
+from decimal import Decimal
+from numpy.linalg import norm, svd
+from django.core.files.uploadedfile import TemporaryUploadedFile
 
-	
+def handle_uploaded_file(song_input_file, path):
+    with open(path, 'wb+') as destination:
+        for chunk in song_input_file.chunks():
+            destination.write(chunk)
 
 class PitchGuideAPIView(APIView):
 	permission_classes = [AllowAny]
 	def post(self, request, format=None):
-		filename=  "music1.mp3"
+		root_path =  os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_song')
+		files = os.listdir(root_path)
+		for item in files:
+			os.remove(os.path.join(root_path, item))
+
+		difference = request.data.get('difference', 1)
+		is_vocal = True if request.data.get('type') == 'voice' else False
+		
+		from separate_vocal.separateLead import get_vocal_file
+		song_input_file = request.data.get('song_input_file')
+		if type(song_input_file) is TemporaryUploadedFile:
+			song_input_file = request.FILES.get('song_input_file')
+			filename = os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_song/'+song_input_file.name)
+			handle_uploaded_file(song_input_file, filename)
+			song_name = song_input_file.name
+		else:
+			filename = os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_song/'+song_input_file.split('/')[-1])
+			wget.download(song_input_file, filename)
+			song_name = song_input_file.split('/')[-1]
+
+		voc_output_file = '/'.join(filename.split('/')[:-1])+'/'+'_vocal_'+filename.split('/')[-1]
+		mus_output_file = '/'.join(filename.split('/')[:-1])+'/'+'_music_'+filename.split('/')[-1]
+		pitch_output_file = '/'.join(filename.split('/')[:-1])+'/'+'_pitch_'+filename.split('/')[-1]
+		options = {
+			        'song_input_file': filename,
+			        'voc_output_file': voc_output_file,
+			        'mus_output_file': mus_output_file, 
+			        'pitch_output_file': pitch_output_file, 
+			        'verbose': request.data.get('verbose', True), 
+			        'separateSignals': request.data.get('separateSignals', True), 
+			        'nbiter': request.data.get('nbiter', 30), 
+			        'windowSize': request.data.get('windowSize', 0.04644), 
+			        'fourierSize': request.data.get('fourierSize', None), 
+			        'hopsize': request.data.get('hopsize', 0.0058), 
+			        'R': request.data.get('R', 40.0), 
+			        'melody': request.data.get('melody', None), 
+			        'P_numAtomFilters': request.data.get('P_numAtomFilters', 30), 
+			        'K_numFilters': request.data.get('K_numFilters', 10), 
+			        'minF0': request.data.get('minF0', 100.0), 
+			        'maxF0': request.data.get('maxF0', 800.0), 
+			        'stepNotes': request.data.get('stepNotes', 2)
+			    }
+		if len([i for i in options if options[i] == '']) > 0:
+			return  Response({"message":"Please remove empty field or provide value", "code":500})
+		get_vocal_file(options)
+
+
 		try:
-			music_file = request.data.get('song_url', None)
-			difference = request.data.get('difference', 2)
-			wget.download(music_file, filename)
 			downsample = 1
 			samplerate = 44100 // downsample
-
-			win_s = 4096 // downsample 
+			win_s = 4096 // downsample
 			hop_s = 512  // downsample
-			duration_samplerate = 0
-			duration_win_s = 512
-			duration_hop_s = duration_win_s // 2 
-
-			s = source(filename, samplerate, hop_s)
-			o = onset("default", win_s, hop_s, duration_samplerate)
-
+			s = source(voc_output_file, samplerate, hop_s)
 			samplerate = s.samplerate
-
 			tolerance = 0.8
-
 			pitch_o = pitch("yin", win_s, hop_s, samplerate)
 			pitch_o.set_unit("midi")
 			pitch_o.set_tolerance(tolerance)
 			initial_training =[]
 			total_frames = 0
-			
+			end_time = 0
+			idx = 1
 			while True:
-			    samples, read = s()
-			    pitch1 = pitch_o(samples)[0]
-			    confidence = 0#np.nan_to_num(pitch_o.get_confidence())
-			    if o(samples):
-			    	confidence = np.nan_to_num(o.get_last_s())
-			    if confidence > 0:
-			    	initial_training.append({"start_time": str(total_frames / float(samplerate)) ,"durations": str(confidence),"value": str(pitch1)})
-			    total_frames += read
-			    if read < hop_s: break
+				samples, read = s()
+				pitch_value = pitch_o(samples)[0]
+				start_time = total_frames / float(samplerate)
+				duration = start_time-end_time
+				end_time = start_time
+				initial_training.append({"id": idx, "start_time": str(start_time) ,"durations": str(duration),"value": str(pitch_value)})
+				total_frames += read
+				idx +=1
+				if read < hop_s: break
 
-			with open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.json'), "w") as file:
+			temp_val = 0
+			temp_ids = []
+
+			for idx, val in enumerate(initial_training):
+				value = Decimal(val['value'])
+				if value != 0 and abs(Decimal(initial_training[idx]['value']) - value) < difference:
+					temp_ids.append(val['id'])
+					temp_val +=value
+				else:
+					avg = scipy.mean(temp_val)
+					if len(temp_ids) > 0:
+						for j in initial_training:
+							if j['id'] in temp_ids:
+								j['value']=str(avg)
+					temp_val = 0
+					temp_ids = []
+			
+			with open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/{}.json'.format(song_name)), "w") as file:
 				file.write(json.dumps(initial_training))
-                        cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/pitch-guide.json'),resource_type="raw")
-
-			os.remove(filename)
+			cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/{}.json'.format(song_name)),resource_type="raw")
 			return Response({"message":"Pitch guide success.", "code":200,"revised_pitch": cloud_pitch['url'] })
 		except Exception as e:
 			print(e)
-			os.remove(filename)
 			return Response({"message":"Something went wrong", "code":500})
 
 
-def perform_vocal_separate(*args, **kwargs):
-	try:
-		VOICE_FILE_PATH = 'vocal.mp3'
-		song_file = "song.mp3"
-		music_file = "music.mp3"
-		wget.download(args[0], song_file)
-		wget.download(args[1], music_file)
-		
-		SECONDS = librosa.get_duration(filename=song_file)
-		mixed, sr = librosa.load(song_file,
-			mono=True, 
-			duration=SECONDS)
 
-		music, _ = librosa.load(music_file,
-			mono=True,
-			duration=SECONDS)
-		voice = mixed -  music
-		librosa.output.write_wav(VOICE_FILE_PATH, voice,sr)
-		os.remove(song_file)
-		os.remove(music_file)
-		return VOICE_FILE_PATH
-	except Exception as e:
-		raise e
-		return "NoURL"
+class VocalSaparateAPIView(APIView):
+	permission_classes = [AllowAny]
+	def post(self, request, format=None):
+		root_path =  os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_song')
+		files = os.listdir(root_path)
+		for item in files:
+			os.remove(os.path.join(root_path, item))
+
+		from separate_vocal.separateLead import get_vocal_file
+		song_input_file = request.data.get('song_input_file')
+		if type(song_input_file) is TemporaryUploadedFile:
+			song_input_file = request.FILES.get('song_input_file')
+			filename = os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/songs/'+song_input_file.name)
+			handle_uploaded_file(song_input_file, filename)
+		else:
+			filename = os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/songs/'+song_input_file.split('/')[-1])
+			wget.download(song_input_file, filename)
+		voc_output_file = '/'.join(filename.split('/')[:-1])+'/'+'_vocal_'+filename.split('/')[-1]
+		mus_output_file = '/'.join(filename.split('/')[:-1])+'/'+'_music_'+filename.split('/')[-1]
+		pitch_output_file = '/'.join(filename.split('/')[:-1])+'/'+'_pitch_'+filename.split('/')[-1]
+		options = {
+			        'song_input_file': filename,
+			        'voc_output_file': voc_output_file,
+			        'mus_output_file': mus_output_file, 
+			        'pitch_output_file': pitch_output_file, 
+			        'verbose': request.data.get('verbose', True), 
+			        'separateSignals': request.data.get('separateSignals', True), 
+			        'nbiter': request.data.get('nbiter', 30), 
+			        'windowSize': request.data.get('windowSize', 0.04644), 
+			        'fourierSize': request.data.get('fourierSize', None), 
+			        'hopsize': request.data.get('hopsize', 0.0058), 
+			        'R': request.data.get('R', 40.0), 
+			        'melody': request.data.get('melody', None), 
+			        'P_numAtomFilters': request.data.get('P_numAtomFilters', 30), 
+			        'K_numFilters': request.data.get('K_numFilters', 10), 
+			        'minF0': request.data.get('minF0', 100.0), 
+			        'maxF0': request.data.get('maxF0', 800.0), 
+			        'stepNotes': request.data.get('stepNotes', 2)
+			    }
+		if len([i for i in options if options[i] == '']) > 0:
+			return  Response({"message":"Please remove empty field or provide value", "code":500})
+			
+		get_vocal_file(options)
+		file_path=  'http://localhost:8000/static/songs/'+'_vocal_'+filename.split('/')[-1]
+		return Response({"message":"Vocal separation completed.", 'vocal_file': file_path, "code": 200})
