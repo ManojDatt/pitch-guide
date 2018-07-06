@@ -141,12 +141,10 @@ class PitchGuideAPIView(APIView):
 			newlist = sorted(final_training, key=itemgetter('start_time')) 
 			
 			with open(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/{}.json'.format(song_name)), "w") as file:
-				file.write(json.dumps(newlist))
+				file.write(json.dumps(final_training))
 			# cloud_pitch = cloudinary.uploader.upload(os.path.join(settings.BASE_DIR, settings.STATIC_ROOT, 'static/picth_file/{}.json'.format(song_name)),resource_type="raw")
 			return Response({"message":"Pitch guide success.", "code":200,"revised_pitch": "http://localhost:8000/static/picth_file/{}.json".format(song_name) })
 		except Exception as e:
-			print("----------system error")
-			print(e)
 			return Response({"message":"Something went wrong", "code":500})
 
 
