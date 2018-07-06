@@ -3,7 +3,7 @@
 
 # Script implementing the multiplicative rules from the following
 # article:
-# 
+#
 # J.-L. Durrieu, G. Richard, B. David and C. Fevotte
 # Source/Filter Model for Unsupervised Main Melody
 # Extraction From Polyphonic Audio Signals
@@ -18,17 +18,17 @@
 # Institut TELECOM, TELECOM ParisTech, CNRS LTCI
 
 # copyright (C) 2010 Jean-Louis Durrieu
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -36,7 +36,6 @@ import numpy as np
 import time, os
 
 from numpy.random import randn
-from string import join
 
 def db(positiveValue):
     """
@@ -64,14 +63,14 @@ def SIMM(# the data to be fitted to:
          WGAMMA,
          # number of desired filters, accompaniment spectra:
          numberOfFilters=4, numberOfAccompanimentSpectralShapes=10,
-         # if any, initial amplitude matrices for 
+         # if any, initial amplitude matrices for
          HGAMMA0=None, HPHI0=None,
          HF00=None,
          WM0=None, HM0=None,
          # Some more optional arguments, to control the "convergence"
          # of the algo
          numberOfIterations=1000, updateRulePower=1.0,
-         stepNotes=4, 
+         stepNotes=4,
          lambdaHF0=0.00,alphaHF0=0.99,
          displayEvolution=False, verbose=True, makeMovie=False,
          updateHGAMMA=True,
@@ -81,7 +80,7 @@ def SIMM(# the data to be fitted to:
         SIMM(SX, WF0, WGAMMA, numberOfFilters=4,
              numberOfAccompanimentSpectralShapes=10, HGAMMA0=None, HPHI0=None,
              HF00=None, WM0=None, HM0=None, numberOfIterations=1000,
-             updateRulePower=1.0, stepNotes=4, 
+             updateRulePower=1.0, stepNotes=4,
              lambdaHF0=0.00, alphaHF0=0.99, displayEvolution=False,
              verbose=True)
 
@@ -135,7 +134,7 @@ def SIMM(# the data to be fitted to:
         HGAMMA
             the estimated P x K decomposition matrix of WPHI on WGAMMA
         HPHI
-            the estimated K x N amplitude matrix of the filter part 
+            the estimated K x N amplitude matrix of the filter part
         HF0
             the estimated NF0 x N amplitude matrix for the source part
         HM
@@ -162,17 +161,17 @@ def SIMM(# the data to be fitted to:
         import matplotlib.pyplot as plt
         from imageMatlab import imageM
         plt.ion()
-        print "Is the display interactive? ", plt.isinteractive()
+        print("Is the display interactive? ", plt.isinteractive())
 
     # renamed for convenience:
     K = numberOfFilters
     R = numberOfAccompanimentSpectralShapes
     omega = updateRulePower
-    
+
     F, N = SX.shape
     Fwf0, NF0 = WF0.shape
     Fwgamma, P = WGAMMA.shape
-    
+
     # Checking the sizes of the matrices
     if Fwf0 != F:
         return False # A REVOIR!!!
@@ -183,19 +182,19 @@ def SIMM(# the data to be fitted to:
             HGAMMA0 = np.array(HGAMMA0)
         Phgamma0, Khgamma0 = HGAMMA0.shape
         if Phgamma0 != P or Khgamma0 != K:
-            print "Wrong dimensions for given HGAMMA0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HGAMMA0, \n")
+            print("random initialization used instead")
             HGAMMA0 = np.abs(randn(P, K))
 
     HGAMMA = np.copy(HGAMMA0)
-    
+
     if HPHI0 is None: # default behaviour
         HPHI = np.abs(randn(K, N))
     else:
         Khphi0, Nhphi0 = np.array(HPHI0).shape
         if Khphi0 != K or Nhphi0 != N:
-            print "Wrong dimensions for given HPHI0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HPHI0, \n")
+            print("random initialization used instead")
             HPHI = np.abs(randn(K, N))
         else:
             HPHI = np.copy(np.array(HPHI0))
@@ -206,8 +205,8 @@ def SIMM(# the data to be fitted to:
         if np.array(HF00).shape[0] == NF0 and np.array(HF00).shape[1] == N:
             HF00 = np.array(HF00)
         else:
-            print "Wrong dimensions for given HF00, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HF00, \n")
+            print("random initialization used instead")
             HF00 = np.abs(randn(NF0, N))
     HF0 = np.copy(HF00)
 
@@ -217,8 +216,8 @@ def SIMM(# the data to be fitted to:
         if np.array(HM0).shape[0] == R and np.array(HM0).shape[1] == N:
             HM0 = np.array(HM0)
         else:
-            print "Wrong dimensions for given HM0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HM0, \n")
+            print("random initialization used instead")
             HM0 = np.abs(randn(R, N))
     HM = np.copy(HM0)
 
@@ -228,11 +227,11 @@ def SIMM(# the data to be fitted to:
         if np.array(WM0).shape[0] == F and np.array(WM0).shape[1] == R:
             WM0 = np.array(WM0)
         else:
-            print "Wrong dimensions for given WM0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given WM0, \n")
+            print("random initialization used instead")
             WM0 = np.abs(randn(F, R))
     WM = np.copy(WM0)
-    
+
     # Iterations to estimate the SIMM parameters:
     WPHI = np.dot(WGAMMA, HGAMMA)
     SF0 = np.dot(WF0, HF0)
@@ -243,17 +242,15 @@ def SIMM(# the data to be fitted to:
     ## SX = SX + np.abs(randn(F, N)) ** 2
                                        # should not need this line
                                        # which ensures that data is not
-                                       # 0 everywhere. 
+                                       # 0 everywhere.
     # temporary matrices
     tempNumFbyN = np.zeros([F, N])
     tempDenFbyN = np.zeros([F, N])
 
-    # Array containing the reconstruction error after the update of each 
+    # Array containing the reconstruction error after the update of each
     # of the parameter matrices:
     recoError = np.zeros([numberOfIterations * 5 * 2 + NF0 * 2 + 1])
     recoError[0] = ISDistortion(SX, hatSX)
-    if verbose:
-        print "Reconstruction error at beginning: ", recoError[0]
     counterError = 1
     if displayEvolution:
         h1 = plt.figure(1)
@@ -266,7 +263,7 @@ def SIMM(# the data to be fitted to:
     for n in np.arange(numberOfIterations):
         # order of re-estimation: HF0, HPHI, HM, HGAMMA, WM
         if verbose:
-            print "iteration ", n, " over ", numberOfIterations
+            print("iteration ", n, " over ", numberOfIterations)
         if displayEvolution:
             h1.clf();imageM(db(HF0));
             plt.clim([np.amax(db(HF0))-100, np.amax(db(HF0))]);plt.draw();
@@ -276,7 +273,7 @@ def SIMM(# the data to be fitted to:
         if makeMovie:
             filename = dirName + '%04d' % n + '.png'
             plt.savefig(filename, dpi=100)
-            
+
         # updating HF0:
         tempNumFbyN = (SPHI * SX) / np.maximum(hatSX ** 2, eps)
         tempDenFbyN = SPHI / np.maximum(hatSX, eps)
@@ -307,17 +304,14 @@ def SIMM(# the data to be fitted to:
         ### normal update rules without checking octaves:
         ##HF0 = HF0 * (np.dot(WF0.T, tempNumFbyN) /
         ##             np.maximum(np.dot(WF0.T, tempDenFbyN), eps)) ** omega
-        
+
         SF0 = np.maximum(np.dot(WF0, HF0),eps)
         hatSX = np.maximum(SF0 * SPHI + SM,eps)
         if computeISDistortion:
             recoError[counterError] = ISDistortion(SX, hatSX)
 
-        if verbose:
-            print "Reconstruction error difference after HF0   : ",
-            print recoError[counterError] - recoError[counterError - 1]
         counterError += 1
-    
+
         # updating HPHI
         tempNumFbyN = (SF0 * SX) / np.maximum(hatSX ** 2, eps)
         tempDenFbyN = SF0 / np.maximum(hatSX, eps)
@@ -331,31 +325,25 @@ def SIMM(# the data to be fitted to:
         SF0 = np.maximum(np.dot(WF0, HF0), eps)
         SPHI = np.maximum(np.dot(WPHI, HPHI), eps)
         hatSX = np.maximum(SF0 * SPHI + SM, eps)
-        
+
         if computeISDistortion:
             recoError[counterError] = ISDistortion(SX, hatSX)
 
-        if verbose:
-            print "Reconstruction error difference after HPHI  : ", \
-                  recoError[counterError] - recoError[counterError - 1]
         counterError += 1
-        
+
         # updating HM
         tempNumFbyN = SX / np.maximum(hatSX ** 2, eps)
         tempDenFbyN = 1 / np.maximum(hatSX, eps)
         HM = np.maximum(HM * (np.dot(WM.T, tempNumFbyN) / \
                               np.maximum(np.dot(WM.T, tempDenFbyN), eps)) ** \
                         omega, eps)
-        
+
         SM = np.maximum(np.dot(WM, HM), eps)
         hatSX = np.maximum(SF0 * SPHI + SM, eps)
-        
+
         if computeISDistortion:
             recoError[counterError] = ISDistortion(SX, hatSX)
 
-        if verbose:
-            print "Reconstruction error difference after HM    : ", \
-                  recoError[counterError] - recoError[counterError - 1]
         counterError += 1
 
         # updating HGAMMA
@@ -370,7 +358,7 @@ def SIMM(# the data to be fitted to:
                                           np.dot(tempDenFbyN, HPHI.T)),
                                    eps)) ** \
                      omega, eps)
-            
+
             sumHGAMMA = np.sum(HGAMMA, axis=0)
             HGAMMA[:, sumHGAMMA>0] = HGAMMA[:, sumHGAMMA>0] / \
                                      np.outer(np.ones(P), \
@@ -379,44 +367,36 @@ def SIMM(# the data to be fitted to:
             sumHPHI = np.sum(HPHI, axis=0)
             HPHI[:, sumHPHI>0] = HPHI[:, sumHPHI>0] / np.outer(np.ones(K), sumHPHI[sumHPHI>0])
             HF0 = HF0 * np.outer(np.ones(NF0), sumHPHI)
-            
+
             WPHI = np.maximum(np.dot(WGAMMA, HGAMMA), eps)
             SF0 = np.maximum(np.dot(WF0, HF0), eps)
             SPHI = np.maximum(np.dot(WPHI, HPHI), eps)
             hatSX = np.maximum(SF0 * SPHI + SM, eps)
-            
+
             if computeISDistortion:
                 recoError[counterError] = ISDistortion(SX, hatSX)
-                
-            if verbose:
-                print "Reconstruction error difference after HGAMMA: ",
-                print recoError[counterError] - recoError[counterError - 1]
-            
-        counterError += 1
+
+            counterError += 1
 
         # updating WM, after a certain number of iterations (here, after 1 iteration)
-        if n > -1: # this test can be used such that WM is updated only
-                  # after a certain number of iterations
+        if n > -1:
             tempNumFbyN = SX / np.maximum(hatSX ** 2, eps)
             tempDenFbyN = 1 / np.maximum(hatSX, eps)
             WM = np.maximum(WM * (np.dot(tempNumFbyN, HM.T) /
                                   np.maximum(np.dot(tempDenFbyN, HM.T),
                                              eps)) ** omega, eps)
-            
+
             sumWM = np.sum(WM, axis=0)
             WM[:, sumWM>0] = (WM[:, sumWM>0] /
                               np.outer(np.ones(F),sumWM[sumWM>0]))
             HM = HM * np.outer(sumWM, np.ones(N))
-            
+
             SM = np.maximum(np.dot(WM, HM), eps)
             hatSX = np.maximum(SF0 * SPHI + SM, eps)
-            
+
             if computeISDistortion:
                 recoError[counterError] = ISDistortion(SX, hatSX)
 
-            if verbose:
-                print "Reconstruction error difference after WM    : ",
-                print recoError[counterError] - recoError[counterError - 1]
             counterError += 1
 
     return HGAMMA, HPHI, HF0, HM, WM, recoError
@@ -429,14 +409,14 @@ def Stereo_SIMM(# the data to be fitted to:
          WGAMMA,
          # number of desired filters, accompaniment spectra:
          numberOfFilters=4, numberOfAccompanimentSpectralShapes=10,
-         # if any, initial amplitude matrices for 
+         # if any, initial amplitude matrices for
          HGAMMA0=None, HPHI0=None,
          HF00=None,
          WM0=None, HM0=None,
          # Some more optional arguments, to control the "convergence"
          # of the algo
          numberOfIterations=1000, updateRulePower=1.0,
-         stepNotes=4, 
+         stepNotes=4,
          lambdaHF0=0.00,alphaHF0=0.99,
          displayEvolution=False, verbose=True,
          updateHGAMMA=True,
@@ -446,7 +426,7 @@ def Stereo_SIMM(# the data to be fitted to:
         SIMM(SXR, SXL, WF0, WGAMMA, numberOfFilters=4,
              numberOfAccompanimentSpectralShapes=10, HGAMMA0=None, HPHI0=None,
              HF00=None, WM0=None, HM0=None, numberOfIterations=1000,
-             updateRulePower=1.0, stepNotes=4, 
+             updateRulePower=1.0, stepNotes=4,
              lambdaHF0=0.00, alphaHF0=0.99, displayEvolution=False,
              verbose=True)
 
@@ -500,7 +480,7 @@ def Stereo_SIMM(# the data to be fitted to:
         HGAMMA
             the estimated P x K decomposition matrix of WPHI on WGAMMA
         HPHI
-            the estimated K x N amplitude matrix of the filter part 
+            the estimated K x N amplitude matrix of the filter part
         HF0
             the estimated NF0 x N amplitude matrix for the source part
         HM
@@ -527,22 +507,22 @@ def Stereo_SIMM(# the data to be fitted to:
         import matplotlib.pyplot as plt
         from imageMatlab import imageM
         plt.ion()
-        print "Is the display interactive? ", plt.isinteractive()
+        print("Is the display interactive? ", plt.isinteractive())
 
     # renamed for convenience:
     K = numberOfFilters
     R = numberOfAccompanimentSpectralShapes
     omega = updateRulePower
-    
+
     F, N = SXR.shape
     if (F, N) != SXL.shape:
-        print "The input STFT matrices do not have the same dimension.\n"
-        print "Please check what happened..."
+        print("The input STFT matrices do not have the same dimension.\n")
+        print("Please check what happened...")
         raise ValueError("Dimension of STFT matrices must be the same.")
-        
+
     Fwf0, NF0 = WF0.shape
     Fwgamma, P = WGAMMA.shape
-    
+
     # Checking the sizes of the matrices
     if Fwf0 != F:
         return False # A REVOIR!!!
@@ -553,19 +533,19 @@ def Stereo_SIMM(# the data to be fitted to:
             HGAMMA0 = np.array(HGAMMA0)
         Phgamma0, Khgamma0 = HGAMMA0.shape
         if Phgamma0 != P or Khgamma0 != K:
-            print "Wrong dimensions for given HGAMMA0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HGAMMA0, \n")
+            print("random initialization used instead")
             HGAMMA0 = np.abs(randn(P, K))
 
     HGAMMA = np.copy(HGAMMA0)
-    
+
     if HPHI0 is None: # default behaviour
         HPHI = np.abs(randn(K, N))
     else:
         Khphi0, Nhphi0 = np.array(HPHI0).shape
         if Khphi0 != K or Nhphi0 != N:
-            print "Wrong dimensions for given HPHI0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HPHI0, \n")
+            print("random initialization used instead")
             HPHI = np.abs(randn(K, N))
         else:
             HPHI = np.copy(np.array(HPHI0))
@@ -576,8 +556,8 @@ def Stereo_SIMM(# the data to be fitted to:
         if np.array(HF00).shape[0] == NF0 and np.array(HF00).shape[1] == N:
             HF00 = np.array(HF00)
         else:
-            print "Wrong dimensions for given HF00, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HF00, \n")
+            print("random initialization used instead")
             HF00 = np.abs(randn(NF0, N))
     HF0 = np.copy(HF00)
 
@@ -587,8 +567,8 @@ def Stereo_SIMM(# the data to be fitted to:
         if np.array(HM0).shape[0] == R and np.array(HM0).shape[1] == N:
             HM0 = np.array(HM0)
         else:
-            print "Wrong dimensions for given HM0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HM0, \n")
+            print("random initialization used instead")
             HM0 = np.abs(randn(R, N))
     HM = np.copy(HM0)
 
@@ -598,8 +578,8 @@ def Stereo_SIMM(# the data to be fitted to:
         if np.array(WM0).shape[0] == F and np.array(WM0).shape[1] == R:
             WM0 = np.array(WM0)
         else:
-            print "Wrong dimensions for given WM0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given WM0, \n")
+            print("random initialization used instead")
             WM0 = np.abs(randn(F, R))
     WM = np.copy(WM0)
 
@@ -607,7 +587,7 @@ def Stereo_SIMM(# the data to be fitted to:
     alphaL = 0.5
     betaR = np.diag(np.random.rand(R))
     betaL = np.eye(R) - betaR
-    
+
     # Iterations to estimate the SIMM parameters:
     WPHI = np.dot(WGAMMA, HGAMMA)
     SF0 = np.dot(WF0, HF0)
@@ -619,17 +599,15 @@ def Stereo_SIMM(# the data to be fitted to:
     # SX = SX + np.abs(randn(F, N)) ** 2
                                        # should not need this line
                                        # which ensures that data is not
-                                       # 0 everywhere. 
+                                       # 0 everywhere.
     # temporary matrices
     tempNumFbyN = np.zeros([F, N])
     tempDenFbyN = np.zeros([F, N])
 
-    # Array containing the reconstruction error after the update of each 
+    # Array containing the reconstruction error after the update of each
     # of the parameter matrices:
     recoError = np.zeros([numberOfIterations * 5 * 2 + NF0 * 2 + 1])
     recoError[0] = ISDistortion(SXR, hatSXR) + ISDistortion(SXL, hatSXL)
-    if verbose:
-        print "Reconstruction error at beginning: ", recoError[0]
     counterError = 1
     if displayEvolution:
         h1 = plt.figure(1)
@@ -638,13 +616,7 @@ def Stereo_SIMM(# the data to be fitted to:
     for n in np.arange(numberOfIterations):
         # order of re-estimation: HF0, HPHI, HM, HGAMMA, WM
         if verbose:
-            print "iteration ", n, " over ", numberOfIterations
-        if displayEvolution:
-            h1.clf();imageM(db(HF0));
-            plt.clim([np.amax(db(HF0))-100, np.amax(db(HF0))]);plt.draw();
-            # h1.clf();
-            # imageM(HF0 * np.outer(np.ones([NF0, 1]),
-            #                       1 / (HF0.max(axis=0))));
+            print("iteration 12--", n, " over ", numberOfIterations)
 
         # updating HF0:
         tempNumFbyN = ((alphaR**2) * SPHI * SXR) / np.maximum(hatSXR ** 2, eps)\
@@ -675,11 +647,7 @@ def Stereo_SIMM(# the data to be fitted to:
                 np.dot(WF0[:, np.arange(12 * stepNotes)].T,
                        tempDenFbyN), eps)) ** omega
 
-##        # normal update rules:
-##        HF0 = HF0 * (np.dot(WF0.T, tempNumFbyN) /
-##                     np.maximum(np.dot(WF0.T, tempDenFbyN), eps)) ** omega
-        
-        
+
         SF0 = np.maximum(np.dot(WF0, HF0), eps)
         hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaR**2),HM),
@@ -687,16 +655,13 @@ def Stereo_SIMM(# the data to be fitted to:
         hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaL**2),HM),
                             eps)
-        
+
         if computeISDistortion:
             recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                       + ISDistortion(SXL, hatSXL)
 
-        if verbose:
-            print "Reconstruction error difference after HF0   : ",
-            print recoError[counterError] - recoError[counterError - 1]
         counterError += 1
-    
+
         # updating HPHI
         if updateHGAMMA or True: # updating HPHI even if not updating HGAMMA
             tempNumFbyN = ((alphaR**2) * SF0 * SXR) / np.maximum(hatSXR ** 2, eps)\
@@ -709,7 +674,7 @@ def Stereo_SIMM(# the data to be fitted to:
             HPHI[:, sumHPHI>0] = HPHI[:, sumHPHI>0] / \
                                  np.outer(np.ones(K), sumHPHI[sumHPHI>0])
             HF0 = HF0 * np.outer(np.ones(NF0), sumHPHI)
-            
+
             SF0 = np.maximum(np.dot(WF0, HF0), eps)
             SPHI = np.maximum(np.dot(WPHI, HPHI), eps)
             hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
@@ -718,18 +683,14 @@ def Stereo_SIMM(# the data to be fitted to:
             hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
                                 np.dot(np.dot(WM, betaL**2),HM),
                                 eps)
-            
+
             if computeISDistortion:
                 recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                           + ISDistortion(SXL, hatSXL)
-            
-            if verbose:
-                print "Reconstruction error difference after HPHI  : ", \
-                      recoError[counterError] - recoError[counterError - 1]
-                
+
             counterError += 1
-        
-        
+
+
         # updating HM
         # tempNumFbyN = SXR / np.maximum(hatSXR ** 2, eps)\
         #               + SXL / np.maximum(hatSXL ** 2, eps)
@@ -747,7 +708,7 @@ def Stereo_SIMM(# the data to be fitted to:
                          np.dot(np.dot((betaL**2), WM.T), 1 /
                                 np.maximum(hatSXL, eps)),
                          eps)) ** omega
-        
+
         hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaR**2),HM), eps)
         hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
@@ -756,10 +717,7 @@ def Stereo_SIMM(# the data to be fitted to:
             recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                       + ISDistortion(SXL, hatSXL)
 
-        if verbose:
-            print "Reconstruction error difference after HM    : ", \
-                  recoError[counterError] - recoError[counterError - 1]
-        counterError += 1  
+        counterError += 1
 
         # updating HGAMMA
         if updateHGAMMA:
@@ -767,20 +725,20 @@ def Stereo_SIMM(# the data to be fitted to:
                           + ((alphaL ** 2) * SF0 * SXL) / np.maximum(hatSXL ** 2, eps)
             tempDenFbyN = (alphaR ** 2) * SF0 / np.maximum(hatSXR, eps) \
                           + (alphaL ** 2) * SF0 / np.maximum(hatSXL, eps)
-            
+
             HGAMMA = np.maximum(HGAMMA * (np.dot(WGAMMA.T, np.dot(tempNumFbyN, HPHI.T)) / np.maximum(np.dot(WGAMMA.T, np.dot(tempDenFbyN, HPHI.T)), eps)) ** omega, eps)
-            
+
             sumHGAMMA = np.sum(HGAMMA, axis=0)
             HGAMMA[:, sumHGAMMA>0] = HGAMMA[:, sumHGAMMA>0] / np.outer(np.ones(P), sumHGAMMA[sumHGAMMA>0])
             HPHI = HPHI * np.outer(sumHGAMMA, np.ones(N))
             sumHPHI = np.sum(HPHI, axis=0)
             HPHI[:, sumHPHI>0] = HPHI[:, sumHPHI>0] / np.outer(np.ones(K), sumHPHI[sumHPHI>0])
             HF0 = HF0 * np.outer(np.ones(NF0), sumHPHI)
-            
+
             WPHI = np.maximum(np.dot(WGAMMA, HGAMMA), eps)
             SF0 = np.maximum(np.dot(WF0, HF0), eps)
             SPHI = np.maximum(np.dot(WPHI, HPHI), eps)
-            
+
             hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
                                 np.dot(np.dot(WM, betaR**2),HM), eps)
             hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
@@ -788,13 +746,9 @@ def Stereo_SIMM(# the data to be fitted to:
             if computeISDistortion:
                 recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                           + ISDistortion(SXL, hatSXL)
-            
-            if verbose:
-                print "Reconstruction error difference after HGAMMA: ",
-                print recoError[counterError] - recoError[counterError - 1]
-                
-                counterError += 1
-        
+
+            counterError += 1
+
         # updating WM, after a certain number of iterations (here, after 1 iteration)
         if n > -1: # this test can be used such that WM is updated only
                   # after a certain number of iterations
@@ -814,24 +768,21 @@ def Stereo_SIMM(# the data to be fitted to:
                    np.dot(1 / np.maximum(hatSXL, eps),
                           np.dot(HM.T, betaL ** 2))
                    )) ** omega
-            
+
             sumWM = np.sum(WM, axis=0)
             WM[:, sumWM>0] = (WM[:, sumWM>0] /
                               np.outer(np.ones(F),sumWM[sumWM>0]))
             HM = HM * np.outer(sumWM, np.ones(N))
-            
+
             hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
                                 np.dot(np.dot(WM, betaR**2),HM), eps)
             hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
                                 np.dot(np.dot(WM, betaL**2),HM), eps)
-            
+
             if computeISDistortion:
                 recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                           + ISDistortion(SXL, hatSXL)
 
-            if verbose:
-                print "Reconstruction error difference after WM    : ",
-                print recoError[counterError] - recoError[counterError - 1]
             counterError += 1
 
         # updating alphaR and alphaL:
@@ -847,23 +798,20 @@ def Stereo_SIMM(# the data to be fitted to:
                             np.sum(tempDenFbyN)) ** (omega*.1), eps)
         alphaR = alphaR / np.maximum(alphaR + alphaL, .001)
         alphaL = np.copy(1 - alphaR)
-        
-        
+
+
         hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaR**2),HM), eps)
         hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaL**2),HM), eps)
-        
+
         if computeISDistortion:
             recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                       + ISDistortion(SXL, hatSXL)
-        
-        if verbose:
-            print "Reconstruction error difference after ALPHA : ",
-            print recoError[counterError] - recoError[counterError - 1]
+
         counterError += 1
-        
-        
+
+
         # updating betaR and betaL
         betaR = np.diag(np.diag(np.maximum(betaR *
                     ((np.dot(np.dot(WM.T, SXR / \
@@ -877,21 +825,18 @@ def Stereo_SIMM(# the data to be fitted to:
                              HM.T))) ** (omega*.1), eps)))
         betaR = betaR / np.maximum(betaR + betaL, eps)
         betaL = np.copy(np.eye(R) - betaR)
-        
+
         hatSXR = np.maximum((alphaR**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaR**2),HM), eps)
         hatSXL = np.maximum((alphaL**2) * SF0 * SPHI + \
                             np.dot(np.dot(WM, betaL**2),HM), eps)
-        
+
         if computeISDistortion:
             recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                       + ISDistortion(SXL, hatSXL)
-        
-        if verbose:
-            print "Reconstruction error difference after BETA  : ",
-            print recoError[counterError] - recoError[counterError - 1]
+
         counterError += 1
-        
+
     return alphaR, alphaL, HGAMMA, HPHI, HF0, betaR, betaL, HM, WM, recoError
 
 def stereo_NMF(SXR, SXL,
@@ -899,76 +844,74 @@ def stereo_NMF(SXR, SXL,
                WM0=None, HM0=None,
                numberOfIterations=50, updateRulePower=1.0,
                verbose=False, displayEvolution=False):
-    
+
     eps = 10 ** (-20)
-    
+
     if displayEvolution:
         import matplotlib.pyplot as plt
         from imageMatlab import imageM
         plt.ion()
-        print "Is the display interactive? ", plt.isinteractive()
-    
+        print("Is the display interactive? ", plt.isinteractive())
+
     R = numberOfAccompanimentSpectralShapes
     omega = updateRulePower
-    
+
     F, N = SXR.shape
     if (F, N) != SXL.shape:
-        print "The input STFT matrices do not have the same dimension.\n"
-        print "Please check what happened..."
+        print("The input STFT matrices do not have the same dimension.\n")
+        print("Please check what happened...")
         raise ValueError("Dimension of STFT matrices must be the same.")
-    
+
     if HM0 is None:
         HM0 = np.abs(randn(R, N))
     else:
         if np.array(HM0).shape[0] == R and np.array(HM0).shape[1] == N:
             HM0 = np.array(HM0)
         else:
-            print "Wrong dimensions for given HM0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given HM0, \n")
+            print("random initialization used instead")
             HM0 = np.abs(randn(R, N))
     HM = np.copy(HM0)
-    
+
     if WM0 is None:
         WM0 = np.abs(randn(F, R))
     else:
         if np.array(WM0).shape[0] == F and np.array(WM0).shape[1] == R:
             WM0 = np.array(WM0)
         else:
-            print "Wrong dimensions for given WM0, \n"
-            print "random initialization used instead"
+            print("Wrong dimensions for given WM0, \n")
+            print("random initialization used instead")
             WM0 = np.abs(randn(F, R))
     WM = np.copy(WM0)
-    
+
     betaR = np.diag(np.random.rand(R))
     betaL = np.eye(R) - betaR
-    
+
     hatSXR = np.maximum(np.dot(np.dot(WM, betaR**2), HM), eps)
     hatSXL = np.maximum(np.dot(np.dot(WM, betaL**2), HM), eps)
-    
+
     # temporary matrices
     tempNumFbyN = np.zeros([F, N])
     tempDenFbyN = np.zeros([F, N])
-    
+
     recoError = np.zeros([numberOfIterations * 3 + 1])
     recoError[0] = ISDistortion(SXR, hatSXR) + ISDistortion(SXL, hatSXL)
-    if verbose:
-        print "Reconstruction error at beginning: ", recoError[0]
     counterError = 1
     if displayEvolution:
         h1 = plt.figure(1)
-        
-        
+
+
     for n in np.arange(numberOfIterations):
         # order of re-estimation: HF0, HPHI, HM, HGAMMA, WM
         if verbose:
-            print "iteration ", n, " over ", numberOfIterations
-            
+            print("iteration 54--", n, " over ", numberOfIterations)
+
         if displayEvolution:
             h1.clf()
             imageM(db(hatSXR))
             plt.clim([np.amax(db(hatSXR))-100, np.amax(db(hatSXR))])
             plt.draw()
-        
+
         # updating HM
         HM = HM * \
              ((np.dot(np.dot((betaR**2), WM.T), SXR /
@@ -981,18 +924,15 @@ def stereo_NMF(SXR, SXL,
                          np.dot(np.dot((betaL**2), WM.T), 1 /
                                 np.maximum(hatSXL, eps)),
                          eps)) ** omega
-        
+
         hatSXR = np.maximum(np.dot(np.dot(WM, betaR**2),HM), eps)
         hatSXL = np.maximum(np.dot(np.dot(WM, betaL**2),HM), eps)
-        
+
         recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                   + ISDistortion(SXL, hatSXL)
-        
-        if verbose:
-            print "Reconstruction error difference after HM    : ",\
-                  recoError[counterError] - recoError[counterError - 1]
+
         counterError += 1
-        
+
         # updating WM
         WM = WM * \
              ((np.dot(SXR / np.maximum(hatSXR ** 2, eps),
@@ -1005,24 +945,20 @@ def stereo_NMF(SXR, SXL,
                np.dot(1 / np.maximum(hatSXL, eps),
                       np.dot(HM.T, betaL ** 2))
                )) ** omega
-        
+
         sumWM = np.sum(WM, axis=0)
         WM[:, sumWM>0] = (WM[:, sumWM>0] /
                           np.outer(np.ones(F),sumWM[sumWM>0]))
         HM = HM * np.outer(sumWM, np.ones(N))
-        
+
         hatSXR = np.maximum(np.dot(np.dot(WM, betaR**2), HM), eps)
         hatSXL = np.maximum(np.dot(np.dot(WM, betaL**2), HM), eps)
-        
+
         recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                   + ISDistortion(SXL, hatSXL)
-        
-        if verbose:
-            print "Reconstruction error difference after WM    : ",
-            print recoError[counterError] - recoError[counterError - 1]
-            
+
         counterError += 1
-        
+
         # updating betaR and betaL
         betaR = np.diag(np.diag(np.maximum(betaR *
                         ((np.dot(np.dot(WM.T, SXR / np.maximum(hatSXR ** 2,
@@ -1040,17 +976,13 @@ def stereo_NMF(SXR, SXL,
                                  HM.T))) ** (omega*.1), eps)))
         betaR = betaR / np.maximum(betaR + betaL, eps)
         betaL = np.copy(np.eye(R) - betaR)
-        
+
         hatSXR = np.maximum(np.dot(np.dot(WM, betaR**2), HM), eps)
         hatSXL = np.maximum(np.dot(np.dot(WM, betaL**2), HM), eps)
-        
+
         recoError[counterError] = ISDistortion(SXR, hatSXR) \
                                   + ISDistortion(SXL, hatSXL)
-        
-        if verbose:
-            print "Reconstruction error difference after BETA  : ",
-            print recoError[counterError] - recoError[counterError - 1]
-        
+
         counterError += 1
-        
+
     return betaR, betaL, HM, WM

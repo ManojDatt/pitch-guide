@@ -1,10 +1,10 @@
 #!/usr/bin/python
 import numpy as np
-import SIMM
+from . import SIMM
 import scipy
 import scipy.io.wavfile as wav
 import os
-from tracking import viterbiTrackingArray
+from .tracking import viterbiTrackingArray
 import warnings
 
 def db(val):
@@ -60,9 +60,9 @@ def stft(data, window=sinebell(2048), hopsize=256.0, nfft=2048.0, \
     """
     X, F, N = stft(data, window=sinebell(2048), hopsize=1024.0,
                    nfft=2048.0, fs=44100)
-                   
+
     Computes the short time Fourier transform (STFT) of data.
-    
+
     Inputs:
         data                  : one-dimensional time-series to be
                                 analyzed
@@ -72,7 +72,7 @@ def stft(data, window=sinebell(2048), hopsize=256.0, nfft=2048.0, \
                                 computation (the user has to provide an
                                 even number)
         fs=44100.0            : sampling rate of the signal
-        
+
     Outputs:
         X                     : STFT of data
         F                     : values of frequencies at each Fourier
@@ -80,47 +80,47 @@ def stft(data, window=sinebell(2048), hopsize=256.0, nfft=2048.0, \
         N                     : central time at the middle of each
                                 analysis window
     """
-    
+
     # window defines the size of the analysis windows
     lengthWindow = window.size
-    
+
     # !!! adding zeros to the beginning of data, such that the first
     # window is centered on the first sample of data
-    data = np.concatenate((np.zeros(lengthWindow / 2.0),data))          
+    data = np.concatenate((np.zeros(lengthWindow / 2.0),data))
     lengthData = data.size
-    
+
     # adding one window for the last frame (same reason as for the
     # first frame)
     numberFrames = np.ceil((lengthData - lengthWindow) / hopsize \
-                           + 1) + 1  
+                           + 1) + 1
     newLengthData = (numberFrames - 1) * hopsize + lengthWindow
     # zero-padding data such that it holds an exact number of frames
     data = np.concatenate((data, np.zeros([newLengthData - lengthData])))
-    
+
     # the output STFT has nfft/2+1 rows. Note that nfft has to be an
     # even number (and a power of 2 for the fft to be fast)
     numberFrequencies = nfft / 2.0 + 1
-    
+
     STFT = np.zeros([numberFrequencies, numberFrames], dtype=complex)
-    
+
     for n in np.arange(numberFrames):
         beginFrame = n * hopsize
         endFrame = beginFrame + lengthWindow
         frameToProcess = window * data[beginFrame:endFrame]
         STFT[:,n] = np.fft.rfft(frameToProcess, nfft);
-        
+
     F = np.arange(numberFrequencies) / nfft * fs
     N = np.arange(numberFrames) * hopsize / fs
-    
+
     return STFT, F, N
 
 def istft(X, window=sinebell(2048), hopsize=256.0, nfft=2048.0):
     """
     data = istft(X, window=sinebell(2048), hopsize=256.0, nfft=2048.0)
-    
+
     Computes an inverse of the short time Fourier transform (STFT),
     here, the overlap-add procedure is implemented.
-    
+
     Inputs:
         X                     : STFT of the signal, to be "inverted"
         window=sinebell(2048) : synthesis window
@@ -130,7 +130,7 @@ def istft(X, window=sinebell(2048), hopsize=256.0, nfft=2048.0):
         nfft=2048.0           : number of points for the Fourier
                                 computation
                                 (the user has to provide an even number)
-                                
+
     Outputs:
         data                  : time series corresponding to the given
                                 STFT the first half-window is removed,
@@ -140,7 +140,7 @@ def istft(X, window=sinebell(2048), hopsize=256.0, nfft=2048.0):
     lengthWindow = np.array(window.size)
     numberFrequencies, numberFrames = np.array(X.shape)
     lengthData = hopsize * (numberFrames - 1) + lengthWindow
-    
+
     data = np.zeros(lengthData)
     for n in np.arange(numberFrames):
         beginFrame = n * hopsize
@@ -149,10 +149,10 @@ def istft(X, window=sinebell(2048), hopsize=256.0, nfft=2048.0):
         frameTMP = frameTMP[:lengthWindow]
         data[beginFrame:endFrame] = data[beginFrame:endFrame] \
                                     + window * frameTMP
-        
+
     # remove the extra bit before data that was - supposedly - added
     # in the stft computation:
-    data = data[(lengthWindow / 2.0):] 
+    data = data[(lengthWindow / 2.0):]
     return data
 
 # DEFINING THE FUNCTIONS TO CREATE THE 'BASIS' WF0
@@ -166,7 +166,7 @@ def generate_WF0_chirped(minF0, maxF0, Fs, Nfft=2048, stepNotes=4, \
                                         stepNotes=4, lengthWindow=2048,
                                         Ot=0.5, perF0=2,
                                         depthChirpInSemiTone=0.5)
-                                        
+
     Generates a 'basis' matrix for the source part WF0, using the
     source model KLGLOTT88, with the following I/O arguments:
     Inputs:
@@ -185,7 +185,7 @@ def generate_WF0_chirped(minF0, maxF0, Fs, Nfft=2048, stepNotes=4, \
                              value
         depthChirpInSemiTone the maximum value, in semitone, of the
                              allowed chirp per F0
-                             
+
     Outputs:
         F0Table the vector containing the values of the fundamental
                 frequencies in Hertz (Hz) corresponding to the
@@ -206,25 +206,25 @@ def generate_WF0_chirped(minF0, maxF0, Fs, Nfft=2048, stepNotes=4, \
                              '_depthChirp-', str(depthChirpInSemiTone),
                              '_analysisWindow-', analysisWindow,
                              '.npz'])
-    
+
     if os.path.isfile(filename) and loadWF0:
         struc = np.load(filename)
         return struc['F0Table'], struc['WF0']
-    
-    
+
+
     # converting to double arrays:
     minF0=np.double(minF0)
     maxF0=np.double(maxF0)
     Fs=np.double(Fs)
     stepNotes=np.double(stepNotes)
-    
+
     # computing the F0 table:
     numberOfF0 = np.ceil(12.0 * stepNotes * np.log2(maxF0 / minF0)) + 1
     F0Table=minF0 * (2 ** (np.arange(numberOfF0,dtype=np.double) \
                            / (12 * stepNotes)))
-    
+
     numberElementsInWF0 = numberOfF0 * perF0
-    
+
     # computing the desired WF0 matrix
     WF0 = np.zeros([Nfft, numberElementsInWF0],dtype=np.double)
     for fundamentalFrequency in np.arange(numberOfF0):
@@ -239,7 +239,7 @@ def generate_WF0_chirped(minF0, maxF0, Fs, Nfft=2048, stepNotes=4, \
                  * (2 ** ((chirpNumber + 1.0) * depthChirpInSemiTone \
                           / (12.0 * (perF0 - 1.0))))
             # F0 is the mean of F1 and F2.
-            F1 = 2.0 * F0Table[fundamentalFrequency] - F2 
+            F1 = 2.0 * F0Table[fundamentalFrequency] - F2
             odgd, odgdSpec = \
                   generate_ODGD_spec_chirped(F1, F2, Fs, \
                                              Ot=Ot, \
@@ -247,27 +247,27 @@ def generate_WF0_chirped(minF0, maxF0, Fs, Nfft=2048, stepNotes=4, \
                                              Nfft=Nfft, t0=0.0)
             WF0[:,fundamentalFrequency * perF0 + chirpNumber + 1] = \
                                        np.abs(odgdSpec) ** 2
-    
+
     np.savez(filename, F0Table=F0Table, WF0=WF0)
-    
+
     return F0Table, WF0
 
 def generate_ODGD_spec(F0, Fs, lengthOdgd=2048, Nfft=2048, Ot=0.5, \
-                       t0=0.0, analysisWindowType='sinebell'): 
+                       t0=0.0, analysisWindowType='sinebell'):
     """
     generateODGDspec:
-    
+
     generates a waveform ODGD and the corresponding spectrum,
     using as analysis window the -optional- window given as
     argument.
     """
-    
+
     # converting input to double:
     F0 = np.double(F0)
     Fs = np.double(Fs)
     Ot = np.double(Ot)
     t0 = np.double(t0)
-    
+
     # compute analysis window of given type:
     if analysisWindowType=='sinebell':
         analysisWindow = sinebell(lengthOdgd)
@@ -275,16 +275,16 @@ def generate_ODGD_spec(F0, Fs, lengthOdgd=2048, Nfft=2048, Ot=0.5, \
         if analysisWindowType=='hanning' or \
                analysisWindowType=='hanning':
             analysisWindow = hann(lengthOdgd)
-    
+
     # maximum number of partials in the spectral comb:
     partialMax = np.floor((Fs / 2) / F0)
-    
+
     # Frequency numbers of the partials:
     frequency_numbers = np.arange(1,partialMax + 1)
-    
+
     # intermediate value
     temp_array = 1j * 2.0 * np.pi * frequency_numbers * Ot
-    
+
     # compute the amplitudes for each of the frequency peaks:
     amplitudes = F0 * 27 / 4 \
                  * (np.exp(-temp_array) \
@@ -292,19 +292,19 @@ def generate_ODGD_spec(F0, Fs, lengthOdgd=2048, Nfft=2048, Ot=0.5, \
                     - (6 * (1 - np.exp(-temp_array)) \
                        / (temp_array ** 2))) \
                        / temp_array
-    
+
     # Time stamps for the time domain ODGD
     timeStamps = np.arange(lengthOdgd) / Fs + t0 / F0
-    
+
     # Time domain odgd:
     odgd = np.exp(np.outer(2.0 * 1j * np.pi * F0 * frequency_numbers, \
                            timeStamps)) \
                            * np.outer(amplitudes, np.ones(lengthOdgd))
     odgd = np.sum(odgd, axis=0)
-    
+
     # spectrum:
     odgdSpectrum = np.fft.fft(np.real(odgd * analysisWindow), n=Nfft)
-    
+
     return odgd, odgdSpectrum
 
 def generate_ODGD_spec_chirped(F1, F2, Fs, lengthOdgd=2048, Nfft=2048, \
@@ -312,12 +312,12 @@ def generate_ODGD_spec_chirped(F1, F2, Fs, lengthOdgd=2048, Nfft=2048, \
                                analysisWindowType='sinebell'):
     """
     generateODGDspecChirped:
-    
+
     generates a waveform ODGD and the corresponding spectrum,
     using as analysis window the -optional- window given as
     argument.
     """
-    
+
     # converting input to double:
     F1 = np.double(F1)
     F2 = np.double(F2)
@@ -325,7 +325,7 @@ def generate_ODGD_spec_chirped(F1, F2, Fs, lengthOdgd=2048, Nfft=2048, \
     Fs = np.double(Fs)
     Ot = np.double(Ot)
     t0 = np.double(t0)
-    
+
     # compute analysis window of given type:
     if analysisWindowType == 'sinebell':
         analysisWindow = sinebell(lengthOdgd)
@@ -333,16 +333,16 @@ def generate_ODGD_spec_chirped(F1, F2, Fs, lengthOdgd=2048, Nfft=2048, \
         if analysisWindowType == 'hanning' or \
                analysisWindowType == 'hann':
             analysisWindow = hann(lengthOdgd)
-    
+
     # maximum number of partials in the spectral comb:
     partialMax = np.floor((Fs / 2) / np.max(F1, F2))
-    
+
     # Frequency numbers of the partials:
     frequency_numbers = np.arange(1,partialMax + 1)
-    
+
     # intermediate value
     temp_array = 1j * 2.0 * np.pi * frequency_numbers * Ot
-    
+
     # compute the amplitudes for each of the frequency peaks:
     amplitudes = F0 * 27 / 4 * \
                  (np.exp(-temp_array) \
@@ -350,10 +350,10 @@ def generate_ODGD_spec_chirped(F1, F2, Fs, lengthOdgd=2048, Nfft=2048, \
                   - (6 * (1 - np.exp(-temp_array)) \
                      / (temp_array ** 2))) \
                   / temp_array
-    
+
     # Time stamps for the time domain ODGD
     timeStamps = np.arange(lengthOdgd) / Fs + t0 / F0
-    
+
     # Time domain odgd:
     odgd = np.exp(2.0 * 1j * np.pi \
                   * (np.outer(F1 * frequency_numbers,timeStamps) \
@@ -362,10 +362,10 @@ def generate_ODGD_spec_chirped(F1, F2, Fs, lengthOdgd=2048, Nfft=2048, \
                      / (2 * lengthOdgd / Fs))) \
                      * np.outer(amplitudes,np.ones(lengthOdgd))
     odgd = np.sum(odgd,axis=0)
-    
+
     # spectrum:
     odgdSpectrum = np.fft.fft(real(odgd * analysisWindow), n=Nfft)
-    
+
     return odgd, odgdSpectrum
 
 def generateHannBasis(numberFrequencyBins, sizeOfFourier, Fs, \
@@ -385,14 +385,14 @@ def generateHannBasis(numberFrequencyBins, sizeOfFourier, Fs, \
                                       * (numberOfBasis - 1) + 1 \
                                       - 2.0 * overlap))
         # even window length, for convenience:
-        lengthSineWindow = 2.0 * np.floor(lengthSineWindow / 2.0) 
-        
+        lengthSineWindow = 2.0 * np.floor(lengthSineWindow / 2.0)
+
         # for later compatibility with other frequency scales:
-        mappingFrequency = np.arange(numberFrequencyBins) 
-        
+        mappingFrequency = np.arange(numberFrequencyBins)
+
         # size of the "big" window
         sizeBigWindow = 2.0 * numberFrequencyBins
-        
+
         # centers for each window
         ## the first window is centered at, in number of window:
         firstWindowCenter = -numberOfWindowsForUnit + 1
@@ -403,19 +403,19 @@ def generateHannBasis(numberFrequencyBins, sizeOfFourier, Fs, \
             np.arange(firstWindowCenter, lastWindowCenter) \
             * (1 - overlap) * np.double(lengthSineWindow) \
             + lengthSineWindow / 2.0)
-        
+
         # For future purpose: to use different frequency scales
         isScaleRecognized = True
-        
-    # For frequency scale in logarithm (such as ERB scales) 
+
+    # For frequency scale in logarithm (such as ERB scales)
     if frequencyScale == 'log':
         isScaleRecognized = False
-        
+
     # checking whether the required scale is recognized
     if not(isScaleRecognized):
-        print "The desired feature for frequencyScale is not recognized yet..."
+        print("The desired feature for frequencyScale is not recognized yet...")
         return 0
-    
+
     # the shape of one window:
     prototypeSineWindow = hann(lengthSineWindow)
     # adding zeroes on both sides, such that we do not need to check
@@ -424,18 +424,19 @@ def generateHannBasis(numberFrequencyBins, sizeOfFourier, Fs, \
     bigWindow[(sizeBigWindow - lengthSineWindow / 2.0):\
               (sizeBigWindow + lengthSineWindow / 2.0)] \
               = np.vstack(prototypeSineWindow)
-    
+
     WGAMMA = np.zeros([numberFrequencyBins, numberOfBasis])
-    
+
     for p in np.arange(numberOfBasis):
         WGAMMA[:, p] = np.hstack(bigWindow[np.int32(mappingFrequency \
                                                     - sineCenters[p] \
                                                     + sizeBigWindow)])
-        
+
     return WGAMMA
 
 # MAIN FUNCTION, FOR DEFAULT BEHAVIOUR IF THE SCRIPT IS "LAUNCHED"
 def get_vocal_file(options):
+    print("---------------------------get vocal")
     # options = {
     #     'song_input_file': '../staticfiles/static/songs/song1/toolur_4AyIM2.wav',
     #     'voc_output_file': None,
@@ -456,17 +457,7 @@ def get_vocal_file(options):
     #     'maxF0': 800.0,
     #     'stepNotes': 20
     # }
-    
-    # Name of the output files:
-    
-    # Some more optional options:
-   
-    # parser.add_option("--nb-accElements", dest="R", type="float",
-    #                   default=40.0,
-    #                   help="number of elements for the accompaniment.")
-    
-    
-    # Compulsory option: name of the input file:
+
     inputAudioFile = options.get('song_input_file', None)
     print(inputAudioFile)
     if inputAudioFile[-4:] != ".wav":
@@ -483,39 +474,32 @@ def get_vocal_file(options):
     data = np.double(data) / scaleData # makes data vary from -1 to 1
     is_stereo = True
     if data.shape[0] == data.size: # data is multi-channel
-        print "The audio file is not stereo. Making stereo out of mono."
-        print "(You could also try the older separateLead.py...)"
         is_stereo = False
-        # data = np.vstack([data,data]).T 
+        # data = np.vstack([data,data]).T
         # raise ValueError("number of dimensions of the input not 2")
     if is_stereo and data.shape[1] != 2:
-        print "The data is multichannel, but not stereo... \n"
-        print "Unfortunately this program does not scale well. Data is \n"
-        print "reduced to its 2 first channels.\n"
         data = data[:,0:2]
-    
+
     # Processing the options:
     windowSizeInSamples = nextpow2(np.round(options.get('windowSize', 0.04644) * Fs))
-    
+
     hopsize = np.round(options.get('hopsize', 0.0058) * Fs)
     if hopsize != windowSizeInSamples/8:
-        #print "Overriding given hopsize to use 1/8th of window size"
-        #hopsize = windowSizeInSamples/8
         warnings.warn("Chosen hopsize: "+str(hopsize)+\
                       ", while windowsize: "+str(windowSizeInSamples))
-    
+
     if options.get('fourierSize', None) is None:
         NFT = windowSizeInSamples
     else:
         NFT = options.get('fourierSize', None)
 
-    # number of iterations for each parameter estimation step: 
+    # number of iterations for each parameter estimation step:
     niter = options.get('nbiter', 30)
     # number of spectral shapes for the accompaniment
     R = options.get('R', 40.0)
-    
+
     eps = 10 ** -9
-        
+
     if is_stereo:
         XR, F, N = stft(data[:,0], fs=Fs, hopsize=hopsize,
                         window=sinebell(windowSizeInSamples), nfft=NFT)
@@ -526,23 +510,23 @@ def get_vocal_file(options):
         X, F, N = stft(data, fs=Fs, hopsize=hopsize,
                        window=sinebell(windowSizeInSamples), nfft=NFT)
         SX = np.maximum(np.abs(X) ** 2, eps)
-    
+
     del data, F, N
-    
+
     # TODO: also process these as options:
     # minimum and maximum F0 in glottal source spectra dictionary
     minF0 = options.get('minF0', 100.0)
     maxF0 = options.get('maxF0', 800.0)
     F, N = SX.shape
     stepNotes = options.get('stepNotes', 20) # this is the number of F0s within one semitone
-    
+
     K = options.get('K_numFilters', 10) # number of spectral shapes for the filter part
     P = options.get('P_numAtomFilters', 30) # number of elements in dictionary of smooth filters
     chirpPerF0 = 1 # number of chirped spectral shapes between each F0
     # this feature should be further studied before
     # we find a good way of doing that.
-    
-    # Create the harmonic combs, for each F0 between minF0 and maxF0: 
+
+    # Create the harmonic combs, for each F0 between minF0 and maxF0:
     F0Table, WF0 = \
              generate_WF0_chirped(minF0, maxF0, Fs, Nfft=NFT, \
                                   stepNotes=stepNotes, \
@@ -550,17 +534,17 @@ def get_vocal_file(options):
                                   perF0=chirpPerF0, \
                                   depthChirpInSemiTone=.15, loadWF0=True,\
                                   analysisWindow='sinebell')
-    WF0 = WF0[0:F, :] # ensure same size as SX 
+    WF0 = WF0[0:F, :] # ensure same size as SX
     NF0 = F0Table.size # number of harmonic combs
-    # Normalization: 
+    # Normalization:
     WF0 = WF0 / np.outer(np.ones(F), np.amax(WF0, axis=0))
-    
+
     # Create the dictionary of smooth filters, for the filter part of
     # the lead isntrument:
     WGAMMA = generateHannBasis(F, NFT, Fs=Fs, frequencyScale='linear', \
                                numberOfBasis=P, overlap=.75)
-    
-        
+
+
     if options.get('melody', None) is None:
         ## section to estimate the melody, on monophonic algo:
         # First round of parameter estimation:
@@ -574,28 +558,23 @@ def get_vocal_file(options):
             # number of desired filters, accompaniment spectra:
             numberOfFilters=K, numberOfAccompanimentSpectralShapes=R,
             # putting only 2 elements in accompaniment for a start...
-            # if any, initial amplitude matrices for 
+            # if any, initial amplitude matrices for
             HGAMMA0=None, HPHI0=None,
             HF00=None,
             WM0=None, HM0=None,
             # Some more optional arguments, to control the "convergence"
             # of the algo
             numberOfIterations=niter, updateRulePower=1.,
-            stepNotes=stepNotes, 
+            stepNotes=stepNotes,
             lambdaHF0 = 0.0 / (1.0 * SX.max()), alphaHF0=0.9,
             verbose=options.get('verbose', True), displayEvolution=displayEvolution)
-        
-        
-        # Viterbi decoding to estimate the predominant fundamental
-        # frequency line
-        # create transition probability matrix - adhoc parameter 'scale'
-        # TODO: use "learned" parameter scale (NB: after many trials,
-        # provided scale and parameterization seems robust)
+
+
         scale = 1.0
         transitions = np.exp(-np.floor(np.arange(0,NF0) / stepNotes) * scale)
         cutoffnote = 2 * 5 * stepNotes
         transitions[cutoffnote:] = transitions[cutoffnote - 1]
-        
+
         transitionMatrixF0 = np.zeros([NF0 + 1, NF0 + 1]) # toeplitz matrix
         b = np.arange(NF0)
         transitionMatrixF0[0:NF0, 0:NF0] = \
@@ -608,29 +587,29 @@ def get_vocal_file(options):
         transitionMatrixF0[0:NF0, NF0] = pf_0
         transitionMatrixF0[NF0, 0:NF0] = p0_f
         transitionMatrixF0[NF0, NF0] = p0_0
-        
+
         sumTransitionMatrixF0 = np.sum(transitionMatrixF0, axis=1)
         transitionMatrixF0 = transitionMatrixF0 \
                              / np.outer(sumTransitionMatrixF0, \
                                         np.ones(NF0 + 1))
-        
+
         # prior probabilities, and setting the array for Viterbi tracking:
         priorProbabilities = 1 / (NF0 + 1.0) * np.ones([NF0 + 1])
         logHF0 = np.zeros([NF0 + 1, N])
         normHF0 = np.amax(HF0, axis=0)
         barHF0 = np.array(HF0)
-        
+
         logHF0[0:NF0, :] = np.log(barHF0)
         logHF0[0:NF0, normHF0==0] = np.amin(logHF0[logHF0>-np.Inf])
         logHF0[NF0, :] = np.maximum(np.amin(logHF0[logHF0>-np.Inf]),-100)
-        
+
         indexBestPath = viterbiTrackingArray(\
             logHF0, np.log(priorProbabilities),
             np.log(transitionMatrixF0), verbose=options.get('verbose', True))
-        
-        
+
+
         del logHF0
-        
+
         # detection of silences:
         # computing the melody restricted F0 amplitude matrix HF00
         # (which will be used as initial HF0 for further algo):
@@ -669,11 +648,11 @@ def get_vocal_file(options):
                                                        / scopeAllowedHF0) \
                                           + 1))
         HF00[dim1index, dim2index] = HF0[dim1index, dim2index]# HF0.max()
-        
+
         HF00[:, indexBestPath == (NF0 - 1)] = 0.0
         HF00[:, indexBestPath == 0] = 0.0
-        
-        # remove frames with less than (100 thres_energy) % of total energy. 
+
+        # remove frames with less than (100 thres_energy) % of total energy.
         thres_energy = 0.000584
         SF0 = np.maximum(np.dot(WF0, HF00), eps)
         SPHI = np.maximum(np.dot(WGAMMA, np.dot(HGAMMA, HPHI)), eps)
@@ -688,26 +667,26 @@ def get_vocal_file(options):
         ind_999 = np.nonzero(energyMelCumulNorm>thres_energy)[0][0]
         if ind_999 is None:
             ind_999 = N
-        
+
         melNotPresent = (energyMel <= energyMelCumulNorm[ind_999])
         indexBestPath[melNotPresent] = 0
-        
+
     else:
         ## take the provided melody line:
         # load melody from file:
         melodyFromFile = np.loadtxt(options.get('melody', None))
         sizeProvidedMel = melodyFromFile.shape
         if len(sizeProvidedMel) == 1:
-            print "The melody should be provided as <Time (s)><F0 (Hz)>."
+            print("The melody should be provided as <Time (s)><F0 (Hz)>.")
             raise ValueError("Bad melody format")
         melTimeStamps = melodyFromFile[:,0] # + 1024 / np.double(Fs)
         melFreqHz = melodyFromFile[:,1]
         if minF0 > melFreqHz[melFreqHz>40.0].min() or maxF0 < melFreqHz.max():
             minF0 = melFreqHz[melFreqHz>40.0].min() *.97
             maxF0 = np.maximum(melFreqHz.max()*1.03, 2*minF0 * 1.03)
-            print "Recomputing the source basis for "
-            print "minF0 = ", minF0, "Hz and maxF0 = ", maxF0, "Hz."
-            # Create the harmonic combs, for each F0 between minF0 and maxF0: 
+            print("Recomputing the source basis for ")
+            print("minF0 = ", minF0, "Hz and maxF0 = ", maxF0, "Hz.")
+            # Create the harmonic combs, for each F0 between minF0 and maxF0:
             F0Table, WF0 = \
                      generate_WF0_chirped(minF0, maxF0, Fs, Nfft=NFT, \
                                           stepNotes=stepNotes, \
@@ -715,11 +694,11 @@ def get_vocal_file(options):
                                           Ot=0.25, \
                                           perF0=chirpPerF0, \
                                           depthChirpInSemiTone=.15)
-            WF0 = WF0[0:F, :] # ensure same size as SX 
+            WF0 = WF0[0:F, :] # ensure same size as SX
             NF0 = F0Table.size # number of harmonic combs
-            # Normalization: 
+            # Normalization:
             WF0 = WF0 / np.outer(np.ones(F), np.amax(WF0, axis=0))
-            
+
         sigTimeStamps = np.arange(N) * hopsize / np.double(Fs)
         distMatTimeStamps = np.abs(np.outer(np.ones(sizeProvidedMel[0]),
                                             sigTimeStamps) -
@@ -733,23 +712,17 @@ def get_vocal_file(options):
         indexBestPath[distMatTimeStamps[minDistTimeStamps,range(N)] >= \
                       0.5 * options.get('windowSize', 0.04644)] = 0
         indexBestPath[f0BestPath<=0] = 0
-        
+
     freqMelody = F0Table[np.array(indexBestPath,dtype=int)]
     freqMelody[indexBestPath==0] = - freqMelody[indexBestPath==0]
     np.savetxt(options.get('pitch_output_file', None),
                np.array([np.arange(N) * hopsize / np.double(Fs),
                          freqMelody]).T)
-    
+
     # If separation is required:
     if options.get('separateSignals', True):
-        # Second round of parameter estimation, with specific
-        # initial HF00:
         HF00 = np.zeros([NF0 * chirpPerF0, N])
-        
         scopeAllowedHF0 = 2.0 / 1.0
-        
-        # indexes for HF00:
-        # TODO: reprogram this with a 'where'?...
         dim1index = np.array(\
             np.maximum(\
             np.minimum(\
@@ -768,11 +741,7 @@ def get_vocal_file(options):
             0),
             dtype=int)
         dim1index = dim1index[indexBestPath!=0,:]
-        ## dim1index = dim1index.reshape(1, N * chirpPerF0 \
-        ##                        * (2 * np.floor(stepNotes / scopeAllowedHF0) \
-        ##                          + 1))
         dim1index = dim1index.reshape(1,dim1index.size)
-        
         dim2index = np.outer(np.arange(N),
                              np.ones(chirpPerF0 \
                                      * (2 * np.floor(stepNotes \
@@ -781,22 +750,15 @@ def get_vocal_file(options):
                              )
         dim2index = dim2index[indexBestPath!=0,:]
         dim2index = dim2index.reshape(1,dim2index.size)
-        ## dim2index.reshape(1, N * chirpPerF0 \
-        ##                                * (2 * np.floor(stepNotes \
-        ##                                                / scopeAllowedHF0) \
-        ##                                   + 1))
         HF00[dim1index, dim2index] = 1 # HF0.max()
-        
         HF00[:, indexBestPath == (NF0 - 1)] = 0.0
         HF00[:, indexBestPath == 0] = 0.0
-        
-        
         WF0effective = WF0
         HF00effective = HF00
-        
+
         if options.get('melody', None) is None:
             del HF0, HGAMMA, HPHI, HM, WM, HF00
-        
+
         if is_stereo:
             del SX
             SXR = np.maximum(np.abs(XR) ** 2, eps)
@@ -818,66 +780,66 @@ def get_vocal_file(options):
                     # Some more optional arguments, to control the "convergence"
                     # of the algo
                     numberOfIterations=niter, updateRulePower=1.0,
-                    stepNotes=stepNotes, 
+                    stepNotes=stepNotes,
                     lambdaHF0 = 0.0 / (1.0 * SXR.max()), alphaHF0=0.9,
                     verbose=options.get('verbose', True), displayEvolution=displayEvolution)
-            
+
             WPHI = np.dot(WGAMMA, HGAMMA)
             SPHI = np.dot(WPHI, HPHI)
             SF0 = np.dot(WF0effective, HF0)
-            
+
             hatSXR = (alphaR**2) * SF0 * SPHI + np.dot(np.dot(WM, betaR**2),HM)
             hatSXL = (alphaL**2) * SF0 * SPHI + np.dot(np.dot(WM, betaL**2),HM)
-            
+
             hatVR = (alphaR**2) * SPHI * SF0 / hatSXR * XR
-            
+
             vestR = istft(hatVR, hopsize=hopsize, nfft=NFT,
                           window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             hatVR = (alphaL**2) * SPHI * SF0 / hatSXL * XL
-            
+
             vestL = istft(hatVR, hopsize=hopsize, nfft=NFT,
                           window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             #scikits.audiolab.wavwrite(np.array([vestR,vestL]).T, \
             #                          options.get('voc_output_file', None), Fs)
-            
+
             vestR = np.array(np.round(vestR*scaleData), dtype=dataType)
             vestL = np.array(np.round(vestL*scaleData), dtype=dataType)
             wav.write(options.get('voc_output_file', None), Fs, \
                       np.array([vestR,vestL]).T)
-            
+
             #wav.write(options.get('voc_output_file', None), Fs, \
             #          np.int16(32768.0 * np.array([vestR,vestL]).T))
-            
+
             hatMR = (np.dot(np.dot(WM,betaR ** 2),HM)) / hatSXR * XR
-            
+
             mestR = istft(hatMR, hopsize=hopsize, nfft=NFT,
                           window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             hatMR = (np.dot(np.dot(WM,betaL ** 2),HM)) / hatSXL * XL
-            
+
             mestL = istft(hatMR, hopsize=hopsize, nfft=NFT,
                           window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             #scikits.audiolab.wavwrite(np.array([mestR,mestL]).T, \
             #                          options.get('mus_output_file', None), Fs)
-            
+
             mestR = np.array(np.round(mestR*scaleData), dtype=dataType)
             mestL = np.array(np.round(mestL*scaleData), dtype=dataType)
             wav.write(options.get('mus_output_file', None), Fs, \
                       np.array([mestR,mestL]).T)
-            
+
             #wav.write(options.get('mus_output_file', None), Fs, \
             #          np.int16(32768.0 * np.array([mestR,mestL]).T))
-            
+
             del hatMR, mestL, vestL, vestR, mestR, hatVR, hatSXR, hatSXL, SPHI, SF0
-        
+
             # adding the unvoiced part in the source basis:
             WUF0 = np.hstack([WF0, np.ones([WF0.shape[0], 1])])
             HUF0 = np.vstack([HF0, np.ones([1, HF0.shape[1]])])
             ## HUF0[-1,:] = HF0.sum(axis=0) # should we do this?
-            
+
             alphaR, alphaL, HGAMMA, HPHI, HF0, \
                 betaR, betaL, HM, WM, recoError3 = SIMM.Stereo_SIMM(
                     # the data to be fitted to:
@@ -896,47 +858,47 @@ def get_vocal_file(options):
                 # Some more optional arguments, to control the "convergence"
                 # of the algo
                 numberOfIterations=niter, updateRulePower=1.0,
-                stepNotes=stepNotes, 
+                stepNotes=stepNotes,
                 lambdaHF0 = 0.0 / (1.0 * SXR.max()), alphaHF0=0.9,
                 verbose=options.get('verbose', True), displayEvolution=displayEvolution,
                 updateHGAMMA=False)
-            
+
             WPHI = np.dot(WGAMMA, HGAMMA)
             SPHI = np.dot(WPHI, HPHI)
             SF0 = np.dot(WUF0, HF0)
-            
+
             hatSXR = (alphaR**2) * SF0 * SPHI + np.dot(np.dot(WM, betaR**2),HM)
             hatSXL = (alphaL**2) * SF0 * SPHI + np.dot(np.dot(WM, betaL**2),HM)
-            
+
             hatVR = (alphaR**2) * SPHI * SF0 / hatSXR * XR
-            
+
             vestR = istft(hatVR, hopsize=hopsize, nfft=NFT,
                           window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             hatVR = (alphaL**2) * SPHI * SF0 / hatSXL * XL
-            
+
             vestL = istft(hatVR, hopsize=hopsize, nfft=NFT,
                           window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             outputFileName = options.get('voc_output_file', None)[:-4] + '_VUIMM.wav'
-            
+
             vestR = np.array(np.round(vestR*scaleData), dtype=dataType)
             vestL = np.array(np.round(vestL*scaleData), dtype=dataType)
             wav.write(outputFileName, Fs, \
                       np.array([vestR,vestL]).T)
-            
+
             hatMR = (np.dot(np.dot(WM,betaR ** 2),HM)) / hatSXR * XR
-            
+
             mestR = istft(hatMR, hopsize=hopsize, nfft=NFT,
                          window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             hatMR = (np.dot(np.dot(WM,betaL ** 2),HM)) / hatSXL * XL
-            
+
             mestL = istft(hatMR, hopsize=hopsize, nfft=NFT,
                          window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             outputFileName = options.get('mus_output_file', None)[:-4] + '_VUIMM.wav'
-            
+
             mestR = np.array(np.round(mestR*scaleData), dtype=dataType)
             mestL = np.array(np.round(mestL*scaleData), dtype=dataType)
             wav.write(outputFileName, Fs, \
@@ -953,47 +915,47 @@ def get_vocal_file(options):
                 # number of desired filters, accompaniment spectra:
                 numberOfFilters=K, numberOfAccompanimentSpectralShapes=R,
                 # putting only 2 elements in accompaniment for a start...
-                # if any, initial amplitude matrices for 
+                # if any, initial amplitude matrices for
                 HGAMMA0=None, HPHI0=None,
                 HF00=HF00effective,
                 WM0=None, HM0=None,
                 # Some more optional arguments, to control the "convergence"
                 # of the algo
                 numberOfIterations=niter, updateRulePower=1.,
-                stepNotes=stepNotes, 
+                stepNotes=stepNotes,
                 lambdaHF0 = 0.0 / (1.0 * SX.max()), alphaHF0=0.9,
                 verbose=options.get('verbose', True), displayEvolution=displayEvolution)
-            
+
             WPHI = np.dot(WGAMMA, HGAMMA)
             SPHI = np.dot(WPHI, HPHI)
             SF0 = np.dot(WF0effective, HF0)
             SM = np.dot(WM,HM)
-            
+
             hatSX =  SF0 * SPHI + SM
-            
+
             hatV = SPHI * SF0 / hatSX * X
-            
+
             vest = istft(hatV, hopsize=hopsize, nfft=NFT,
                          window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             vest = np.array(np.round(vest*scaleData), dtype=dataType)
             wav.write(options.get('voc_output_file', None), Fs, vest)
-            
+
             hatM = SM / hatSX * X
-            
+
             mest = istft(hatM, hopsize=hopsize, nfft=NFT,
                          window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             mest = np.array(np.round(mest*scaleData), dtype=dataType)
             wav.write(options.get('mus_output_file', None), Fs, mest)
-            
+
             del hatM, vest, mest, hatV, hatSX, SPHI, SF0
-            
+
             # adding the unvoiced part in the source basis:
             WUF0 = np.hstack([WF0, np.ones([WF0.shape[0], 1])])
             HUF0 = np.vstack([HF0, np.ones([1, HF0.shape[1]])])
             ## HUF0[-1,:] = HF0.sum(axis=0) # should we do this?
-            
+
             HGAMMA, HPHI, HF0, HM, WM, recoError1 = SIMM.SIMM(
                 # the data to be fitted to:
                 SX,
@@ -1004,40 +966,40 @@ def get_vocal_file(options):
                 # number of desired filters, accompaniment spectra:
                 numberOfFilters=K, numberOfAccompanimentSpectralShapes=R,
                 # putting only 2 elements in accompaniment for a start...
-                # if any, initial amplitude matrices for 
+                # if any, initial amplitude matrices for
                 HGAMMA0=HGAMMA, HPHI0=HPHI,
                 HF00=HUF0,
                 WM0=None, HM0=None,
                 # Some more optional arguments, to control the "convergence"
                 # of the algo
                 numberOfIterations=niter, updateRulePower=1.,
-                stepNotes=stepNotes, 
+                stepNotes=stepNotes,
                 lambdaHF0 = 0.0 / (1.0 * SX.max()), alphaHF0=0.9,
                 verbose=options.get('verbose', True), displayEvolution=displayEvolution,
                 updateHGAMMA=False)
-            
+
             WPHI = np.dot(WGAMMA, HGAMMA)
             SPHI = np.dot(WPHI, HPHI)
             SF0 = np.dot(WUF0, HF0)
             SM = np.dot(WM,HM)
-            
+
             hatSX =  SF0 * SPHI + SM
-            
+
             hatV = SPHI * SF0 / hatSX * X
-            
+
             vest = istft(hatV, hopsize=hopsize, nfft=NFT,
                          window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             vest = np.array(np.round(vest*scaleData), dtype=dataType)
             outputFileName = options.get('voc_output_file', None)[:-4] + '_VUIMM.wav'
             wav.write(outputFileName, Fs, vest)
-            
+
             hatM = SM / hatSX * X
-            
+
             mest = istft(hatM, hopsize=hopsize, nfft=NFT,
                          window=sinebell(windowSizeInSamples)) / 4.0
-            
+
             mest = np.array(np.round(mest*scaleData), dtype=dataType)
-            
+
             outputFileName = options.get('mus_output_file', None)[:-4] + '_VUIMM.wav'
             wav.write(outputFileName, Fs, mest)

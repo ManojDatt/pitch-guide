@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
 # copyright (C) 2010 Jean-Louis Durrieu
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from numpy import arange, zeros, array, argmax, vstack, amax, ones, outer 
+from numpy import arange, zeros, array, argmax, vstack, amax, ones, outer
 
 def viterbiTracking(logDensity, logPriorDensities, logTransitionMatrix,
                     verbose=False):
@@ -61,23 +61,11 @@ def viterbiTracking(logDensity, logPriorDensities, logTransitionMatrix,
         antecedents[state, 0] = -1
         cumulativeProbability[state, 0] = logPriorDensities[state] \
                                           + logDensity[state, 0]
-    
+
     for n in arange(1, numberOfFrames):
-        if verbose:
-            print "frame number ", n, "over ", numberOfFrames
         for state in arange(numberOfStates):
-            if verbose:
-                print "     state number ",state, " over ", numberOfStates
-            cumulativeProbability[state, n] \
-                                     = cumulativeProbability[0, n - 1] \
-                                       + logTransitionMatrix[0, state]
             antecedents[state, n] = 0
             for state_ in arange(1, numberOfStates):
-                if verbose:
-                    print "          state number ",
-                    print state_, " over ", numberOfStates
-                tempCumProba = cumulativeProbability[state_, n - 1] \
-                               + logTransitionMatrix[state_, state]
                 if (tempCumProba > cumulativeProbability[state, n]):
                     cumulativeProbability[state, n] = tempCumProba
                     antecedents[state, n] = state_
@@ -134,18 +122,18 @@ def viterbiTrackingArray(logDensity, logPriorDensities, logTransitionMatrix,
 
     cumulativeProbability = zeros([numberOfStates, numberOfFrames])
     antecedents = zeros([numberOfStates, numberOfFrames], dtype=int)
-    
+
     antecedents[:, 0] = -1
     cumulativeProbability[:, 0] = logPriorDensities[:] \
                                   + logDensity[:, 0]
-    
+
     for n in arange(1, numberOfFrames):
-        if verbose:
-            print "frame number ", n, "over ", numberOfFrames
-        # Find the state that minimizes the transition and the cumulative
-        # probability. This operation can be done for all the target
-        # states using numpy operations on ndarrays:
-        # TODO: check that the transition
+        # if verbose:
+        #     print "frame number ", n, "over ", numberOfFrames
+        # # Find the state that minimizes the transition and the cumulative
+        # # probability. This operation can be done for all the target
+        # # states using numpy operations on ndarrays:
+        # # TODO: check that the transition
         antecedents[:, n] \
                    = argmax(outer(onesStates,
                                   cumulativeProbability[:, n - 1]) \
@@ -155,12 +143,12 @@ def viterbiTrackingArray(logDensity, logPriorDensities, logTransitionMatrix,
                      + logTransitionMatrix[antecedents[:, n],
                                            arange(numberOfStates)] \
                      + logDensity[:, n]
-    
+
     # backtracking:
     bestStatePath = zeros(numberOfFrames)
     bestStatePath[-1]= argmax(cumulativeProbability[:, numberOfFrames \
                                                                   - 1])
     for n in arange(numberOfFrames - 2, -1, -1):
         bestStatePath[n] = antecedents[bestStatePath[n + 1], n + 1]
-        
+
     return bestStatePath
