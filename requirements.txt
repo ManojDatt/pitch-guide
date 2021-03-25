@@ -63,7 +63,7 @@ python-dateutil==2.7.3
 python-decouple==3.0
 pytz==2018.3
 PyWavelets==0.5.2
-PyYAML==3.12
+PyYAML==5.4
 pyzmq==17.0.0
 regex==2018.6.9
 resampy==0.2.0
