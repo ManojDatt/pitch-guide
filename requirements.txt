@@ -29,7 +29,7 @@ gast==0.2.0
 grpcio==1.12.1
 gunicorn==19.6.0
 h5py==2.8.0
-html5lib==0.9999999
+html5lib==0.99999999
 itsdangerous==0.24
 Jinja2==2.10
 joblib==0.11
