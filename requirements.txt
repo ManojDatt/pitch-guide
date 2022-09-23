@@ -51,7 +51,7 @@ numba==0.37.0
 numpy==1.11.0
 pbr==4.0.0
 Pillow==5.1.0
-protobuf==3.6.0
+protobuf==3.18.3
 psycopg2==2.7.1
 pycparser==2.18
 pydub==0.21.0
